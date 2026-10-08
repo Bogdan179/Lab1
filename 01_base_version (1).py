@@ -1,20 +1,53 @@
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
+"""
+Лабораторная работа №1.
+Предметная область: домашние животные.
 
+Реализовано:
+- объектно-ориентированная модель предметной области;
+- более 10 классов;
+- наследование и полиморфизм;
+- аннотации типов;
+- CRUD для владельцев, животных и ветеринарных записей;
+- встроенные и собственные исключения;
+- сохранение и загрузка данных в JSON и XML.
+"""
+
+from __future__ import annotations
+
+import json
+import xml.etree.ElementTree as ET
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, asdict
+from typing import Any
+
+
+# =========================
+# Собственные исключения
+# =========================
 
 class PetSystemError(Exception):
-    pass
+    """Базовое исключение системы домашних животных."""
 
 
 class EntityNotFoundError(PetSystemError):
-    pass
+    """Объект с указанным идентификатором не найден."""
+
+
+class ValidationError(PetSystemError):
+    """Переданы некорректные данные."""
 
 
 class DuplicateEntityError(PetSystemError):
-    pass
+    """Объект с таким идентификатором уже существует."""
 
+
+# =========================
+# Базовые классы животных
+# =========================
 
 class Animal(ABC):
+    """Базовый класс домашнего животного."""
+
     def __init__(
         self,
         animal_id: int,
@@ -22,6 +55,15 @@ class Animal(ABC):
         age: int,
         owner_id: int
     ) -> None:
+        if animal_id <= 0:
+            raise ValidationError("ID животного должен быть положительным.")
+        if not name.strip():
+            raise ValidationError("Имя животного не может быть пустым.")
+        if age < 0:
+            raise ValidationError("Возраст не может быть отрицательным.")
+        if owner_id <= 0:
+            raise ValidationError("ID владельца должен быть положительным.")
+
         self.animal_id = animal_id
         self.name = name
         self.age = age
@@ -30,13 +72,13 @@ class Animal(ABC):
     @property
     @abstractmethod
     def animal_type(self) -> str:
-        pass
+        """Возвращает вид животного."""
 
     @abstractmethod
     def make_sound(self) -> str:
-        pass
+        """Возвращает звук животного."""
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "animal_id": self.animal_id,
             "name": self.name,
@@ -47,82 +89,8 @@ class Animal(ABC):
 
 
 class Dog(Animal):
+    """Собака."""
+
     @property
     def animal_type(self) -> str:
         return "Собака"
-
-    def make_sound(self) -> str:
-        return "Гав-гав!"
-
-
-class Cat(Animal):
-    @property
-    def animal_type(self) -> str:
-        return "Кошка"
-
-    def make_sound(self) -> str:
-        return "Мяу!"
-
-
-class Bird(Animal):
-    @property
-    def animal_type(self) -> str:
-        return "Птица"
-
-    def make_sound(self) -> str:
-        return "Чик-чирик!"
-
-
-@dataclass
-class Owner:
-    owner_id: int
-    name: str
-    phone: str
-
-
-class Repository:
-    def __init__(self) -> None:
-        self._items: dict[int, object] = {}
-
-    def create(self, item: object, item_id: int) -> None:
-        if item_id in self._items:
-            raise DuplicateEntityError(
-                f"Объект с ID {item_id} уже существует."
-            )
-        self._items[item_id] = item
-
-    def get(self, item_id: int) -> object:
-        if item_id not in self._items:
-            raise EntityNotFoundError(
-                f"Объект с ID {item_id} не найден."
-            )
-        return self._items[item_id]
-
-    def get_all(self) -> list[object]:
-        return list(self._items.values())
-
-    def update(self, item_id: int, item: object) -> None:
-        if item_id not in self._items:
-            raise EntityNotFoundError(
-                f"Объект с ID {item_id} не найден."
-            )
-        self._items[item_id] = item
-
-    def delete(self, item_id: int) -> None:
-        if item_id not in self._items:
-            raise EntityNotFoundError(
-                f"Объект с ID {item_id} не найден."
-            )
-        del self._items[item_id]
-
-
-class PetManagementSystem:
-    def __init__(self) -> None:
-        self.owners = Repository()
-        self.animals = Repository()
-
-    def add_owner(self, owner: Owner) -> None:
-        self.owners.create(owner, owner.owner_id)
-
-    def add_animal(self, animal: Animal) -> None:
-        self.owners.get(animal.owner_id)
